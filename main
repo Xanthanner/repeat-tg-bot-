@@ -16,7 +16,7 @@ FULL_ACCESS_IDS = config["FULL_ACCESS_IDS"]
 
 
 # Конфигурация
-MAX_MESSAGES = 10000
+MAX_MESSAGES = 15000
 MESSAGES_DIR = "D:\\another\\messages"  # Директория для сохранения сообщений
 
 # Глобальные переменные
