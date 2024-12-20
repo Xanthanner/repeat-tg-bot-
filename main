@@ -54,9 +54,9 @@ def has_access(user_id):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if has_access(user_id):
-        await update.message.reply_text("Привет! Бот готов к работе.")
+        await update.message.reply_text("Уро! Я готов к работе.")
     else:
-        await update.message.reply_text("У вас нет доступа к этому боту.")
+        await update.message.reply_text("Ну и нахуй, еблан бля")
 
 # Команда включения/выключения бота
 async def bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,7 +67,7 @@ async def bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         state = "включён" if bot_enabled else "выключен"
         await update.message.reply_text(f"Бот {state}!")
     else:
-        await update.message.reply_text("У вас нет прав для выполнения этой команды.")
+        await update.message.reply_text("Мамку свою повключай и повыключай. Ей приятно будет?")
 
 # Команда очистки памяти
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -78,7 +78,7 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_chat_config(chat_id, chat_configs[chat_id])
         await update.message.reply_text("Память чата очищена!")
     else:
-        await update.message.reply_text("У вас нет прав для выполнения этой команды.")
+        await update.message.reply_text("Лучше бы ты забыл как думать и умер нахуй")
 
 # Команда установки шанса
 async def setchance(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -97,25 +97,23 @@ async def setchance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except (IndexError, ValueError):
             await update.message.reply_text("Пожалуйста, укажите корректное значение шанса (0-100). Например: /setchance 50")
     else:
-        await update.message.reply_text("У вас нет прав для выполнения этой команды.")
+        await update.message.reply_text("Уменьшил бы шанс своего рождения, еблан")
 
+# Команда принудительного повтора сообщения
 # Команда принудительного повтора сообщения
 async def repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
-    user_id = update.message.from_user.id
-    if has_access(user_id):
-        if chat_id in chat_configs and chat_configs[chat_id]["messages"]:
-            random_message = random.choice(chat_configs[chat_id]["messages"])
-            if random_message.get('text'):
-                await update.message.reply_text(random_message['text'])
-            elif random_message.get('sticker'):
-                await update.message.reply_sticker(random_message['sticker'])
-            elif random_message.get('animation'):
-                await update.message.reply_animation(random_message['animation'])
-        else:
-            await update.message.reply_text("Сообщений для повтора нет.")
+    if chat_id in chat_configs and chat_configs[chat_id]["messages"]:
+        random_message = random.choice(chat_configs[chat_id]["messages"])
+        if random_message.get('text'):
+            await update.message.reply_text(random_message['text'])
+        elif random_message.get('sticker'):
+            await update.message.reply_sticker(random_message['sticker'])
+        elif random_message.get('animation'):
+            await update.message.reply_animation(random_message['animation'])
     else:
-        await update.message.reply_text("У вас нет прав для выполнения этой команды.")
+        await update.message.reply_text("Сообщений для повтора нет.")
+
 
 # Обработчик сообщений
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
