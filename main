@@ -5,7 +5,6 @@ import logging
 import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-import json
 
 # Загружаем конфигурацию
 with open("config.json", "r", encoding="utf-8") as f:
@@ -14,14 +13,15 @@ with open("config.json", "r", encoding="utf-8") as f:
 TOKEN = config["TOKEN"]
 FULL_ACCESS_IDS = config["FULL_ACCESS_IDS"]
 
-
 # Конфигурация
-MAX_MESSAGES = 15000
+MAX_MESSAGES = 10000
 MESSAGES_DIR = "D:\\another\\messages"  # Директория для сохранения сообщений
+BASE_MESSAGES_FILE = "messages.json"  # Файл с базовыми сообщениями
 
 # Глобальные переменные
 bot_enabled = True
-chat_configs = {}
+base_messages = []  # Общие сообщения (глобальные)
+chat_configs = {}  # Уникальные сообщения для чатов
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -29,21 +29,31 @@ logging.basicConfig(level=logging.INFO)
 # Убедиться, что директория для сообщений существует
 os.makedirs(MESSAGES_DIR, exist_ok=True)
 
+# Загрузка базы сообщений
+def load_base_messages():
+    if os.path.exists(BASE_MESSAGES_FILE):
+        try:
+            with open(BASE_MESSAGES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            logging.warning("Файл messages.json поврежден. Используем пустую основу.")
+    return []
+
 # Загрузка конфигурации чата
 def load_chat_config(chat_id):
     config_path = os.path.join(MESSAGES_DIR, f"chat_{chat_id}.json")
     if os.path.exists(config_path):
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            logging.warning(f"Конфигурация для чата {chat_id} повреждена. Создаем новую.")
-    return {"messages": [], "chance": 100}
+            logging.warning(f"Файл конфигурации для чата {chat_id} поврежден. Создаем пустую.")
+    return {"messages": [], "chance": 100, "base_messages": list(base_messages)}
 
 # Сохранение конфигурации чата
 def save_chat_config(chat_id, config):
     config_path = os.path.join(MESSAGES_DIR, f"chat_{chat_id}.json")
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
 
 # Проверка прав доступа
@@ -74,9 +84,10 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
     user_id = update.effective_user.id
     if has_access(user_id):
-        chat_configs[chat_id] = {"messages": [], "chance": 100}
+        # Полностью очищаем все сообщения для данного чата
+        chat_configs[chat_id] = {"messages": [], "chance": 100, "base_messages": []}
         save_chat_config(chat_id, chat_configs[chat_id])
-        await update.message.reply_text("Память чата очищена!")
+        await update.message.reply_text("Память для чата полностью очищена (включая базовые сообщения).")
     else:
         await update.message.reply_text("Лучше бы ты забыл как думать и умер нахуй")
 
@@ -100,11 +111,11 @@ async def setchance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Уменьшил бы шанс своего рождения, еблан")
 
 # Команда принудительного повтора сообщения
-# Команда принудительного повтора сообщения
 async def repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
     if chat_id in chat_configs and chat_configs[chat_id]["messages"]:
-        random_message = random.choice(chat_configs[chat_id]["messages"])
+        all_messages = chat_configs[chat_id]["base_messages"] + chat_configs[chat_id]["messages"]
+        random_message = random.choice(all_messages)
         if random_message.get('text'):
             await update.message.reply_text(random_message['text'])
         elif random_message.get('sticker'):
@@ -113,7 +124,6 @@ async def repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_animation(random_message['animation'])
     else:
         await update.message.reply_text("Сообщений для повтора нет.")
-
 
 # Обработчик сообщений
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,16 +154,21 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Шанс отправки случайного сообщения
     if random.randint(1, 100) <= chat_configs[chat_id]["chance"]:
-        random_message = random.choice(chat_configs[chat_id]["messages"])
-        if random_message.get('text'):
-            await update.message.reply_text(random_message['text'])
-        elif random_message.get('sticker'):
-            await update.message.reply_sticker(random_message['sticker'])
-        elif random_message.get('animation'):
-            await update.message.reply_animation(random_message['animation'])
+        all_messages = chat_configs[chat_id]["base_messages"] + chat_configs[chat_id]["messages"]
+        if all_messages:
+            random_message = random.choice(all_messages)
+            if random_message.get('text'):
+                await update.message.reply_text(random_message['text'])
+            elif random_message.get('sticker'):
+                await update.message.reply_sticker(random_message['sticker'])
+            elif random_message.get('animation'):
+                await update.message.reply_animation(random_message['animation'])
 
 # Основной метод запуска
 async def main():
+    global base_messages
+    base_messages = load_base_messages()  # Загружаем общие сообщения при старте бота
+
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
